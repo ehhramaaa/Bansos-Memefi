@@ -7,10 +7,12 @@ const { clear } = require('console');
 const fetch = require("node-fetch")
 const input = require("input");
 const fs = require("fs");
+const { queryAccessToken, queryGetProfile, querySendTaps, queryNextBoss, queryApplyBooster } = require("./query")
 
+require('dotenv').config();
 const apiId = 28285888;
 const apiHash = "144e7bafbe0ac8c60a7cd56133b91add";
-const apiUrl = "https://api.yescoin.gold";
+const apiUrl = "https://api-gw-tg.memefi.club/graphql";
 const sessionPath = "./sessions/"
 const phonePath = "./phone.txt"
 const proxyDomain = [
@@ -23,7 +25,7 @@ const proxyDomain = [
     "waw.socks.ipvanish.com",
     "lis.socks.ipvanish.com",
     "sin.socks.ipvanish.com",
-    "mad.socks.ipvanish.com",
+    "sea.socks.ipvanish.com",
     "sto.socks.ipvanish.com",
     "iad.socks.ipvanish.com",
     "atl.socks.ipvanish.com",
@@ -49,18 +51,16 @@ async function checkIp(proxy) {
         return [data.ipAddress, data.countryName];
     } catch (error) {
         console.error('Error fetching IP details:', error.message);
-        return error;
+        return 'error';
     }
 }
 
-async function getAccessToken(authData, retryCount = 3, proxy) {
+async function getAccessToken(authQuery, retryCount = 3, proxy) {
     try {
-        const response = await fetch(`${apiUrl}/user/login`, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: headerGetToken,
-            body: JSON.stringify({
-                code: authData.trim()
-            }),
+            body: JSON.stringify(authQuery),
             agent: proxy
         });
 
@@ -70,9 +70,13 @@ async function getAccessToken(authData, retryCount = 3, proxy) {
 
         const responseJson = await response.json();
 
-        if ('token' in responseJson.data) {
+        if (responseJson.data === null) {
+            throw new Error(`HTTP error! status: ${responseJson.errors.message}`);
+        }
+
+        if ('telegramUserLogin' in responseJson.data) {
             console.log('Successfully Get Access Token');
-            return responseJson.data.token;
+            return responseJson.data.telegramUserLogin.access_token;
         } else {
             console.log('No access token found in the response.');
             if (retryCount > 0) {
@@ -84,7 +88,6 @@ async function getAccessToken(authData, retryCount = 3, proxy) {
         }
     } catch (error) {
         console.error('Error:', error.message);
-        throw error;
     }
 }
 
@@ -92,9 +95,10 @@ async function getAccountInfo(accessToken, proxy) {
     console.log("[ACCOUNT INFO]")
 
     try {
-        const response = await fetch(`${apiUrl}/account/getAccountInfo`, {
-            method: 'GET',
+        const response = await fetch(apiUrl, {
+            method: 'POST',
             headers: headerWithToken(accessToken),
+            body: JSON.stringify(queryGetProfile),
             agent: proxy
         });
 
@@ -104,69 +108,59 @@ async function getAccountInfo(accessToken, proxy) {
 
         const responseJson = await response.json();
 
-        console.log('User ID\t\t:', responseJson.data.userId)
-        console.log('Current Balance :', responseJson.data.currentAmount)
-        console.log('Invite Amount\t:', responseJson.data.inviteAmount)
-        console.log('User Level\t:', responseJson.data.userLevel)
-        console.log('Rank\t\t:', responseJson.data.rank)
+
+        console.log('coinsAmount\t:', responseJson.data.telegramGameGetConfig.coinsAmount)
+        console.log('currentEnergy\t:', responseJson.data.telegramGameGetConfig.currentEnergy)
+        console.log('maxEnergy\t:', responseJson.data.telegramGameGetConfig.maxEnergy)
+
+        console.log("[BOSS INFO]")
+        console.log('level\t:', responseJson.data.telegramGameGetConfig.currentBoss.level)
+        console.log('currentHealth\t:', responseJson.data.telegramGameGetConfig.currentBoss.currentHealth)
+        console.log('maxHealth\t:', responseJson.data.telegramGameGetConfig.currentBoss.maxHealth)
+
+        console.log("[BOOST INFO]")
+        console.log('TurboAmount\t:', responseJson.data.telegramGameGetConfig.freeBoosts.currentTurboAmount)
+        console.log('RefillAmount\t:', responseJson.data.telegramGameGetConfig.freeBoosts.currentRefillEnergyAmount)
+
+        console.log("[LEVEL INFO]")
+        console.log('weaponLevel\t:', responseJson.data.telegramGameGetConfig.weaponLevel)
+        console.log('energyLimitLevel:', responseJson.data.telegramGameGetConfig.energyLimitLevel)
+        console.log('tapBotLevel\t:', responseJson.data.telegramGameGetConfig.tapBotLevel)
+
+        return [responseJson.data.telegramGameGetConfig.nonce, responseJson.data.telegramGameGetConfig.weaponLevel, responseJson.data.telegramGameGetConfig.freeBoosts.currentTurboAmount, responseJson.data.telegramGameGetConfig.freeBoosts.currentRefillEnergyAmount, responseJson.data.telegramGameGetConfig.currentBoss.currentHealth]
 
     } catch (error) {
         console.error('Error:', error.message);
-        throw error;
     }
 }
 
-async function getAccountBuildInfo(accessToken, proxy) {
-    console.log("[BOOST MENU]")
+async function sendTaps(accessToken, nonce, weaponLevel, proxy) {
+    console.log("[SEND TAPS]")
 
-    try {
-        const response = await fetch(`${apiUrl}/build/getAccountBuildInfo`, {
-            method: 'GET',
-            headers: headerWithToken(accessToken),
-            agent: proxy
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const responseJson = await response.json();
-
-        console.log('Special Box Balance\t:', responseJson.data.specialBoxLeftRecoveryCount)
-        console.log('Refill Coin Balance\t:', responseJson.data.coinPoolLeftRecoveryCount)
-        console.log('Recovery Pool Level\t:', responseJson.data.coinPoolRecoveryLevel)
-        console.log('Upgrade Recovery Price\t:', responseJson.data.coinPoolRecoveryUpgradeCost)
-        console.log('Click Rate Level\t:', responseJson.data.singleCoinLevel)
-        console.log('Upgrade Click Rate Price:', responseJson.data.singleCoinUpgradeCost)
-        console.log('Coin Limit Level\t:', responseJson.data.coinPoolTotalLevel)
-        console.log('Upgrade Coin Limit Price:', responseJson.data.coinPoolTotalUpgradeCost)
-
-        return [responseJson.data.singleCoinLevel, responseJson.data.specialBoxLeftRecoveryCount, responseJson.data.coinPoolLeftRecoveryCount]
-
-    } catch (error) {
-        console.error('Error:', error.message);
-        throw error;
-    }
-}
-
-async function collectCoin(accessToken, clickLevel, proxy) {
-    console.log("[COLLECT COIN]")
-
-    let collectCoin = true
-    let click
+    let limitTap = Math.floor(Math.random() * (200 - 50 + 1)) + 50
+    let currentEnergy = 0
+    let taps
 
     do {
-        if (clickLevel <= 5) {
-            click = Math.floor(Math.random() * (400 - 200 + 1)) + 200
+        if (weaponLevel <= 5) {
+            if (currentEnergy <= 200) {
+                taps = Math.floor(Math.random() * (50 - 10 + 1)) + 10
+            } else {
+                taps = Math.floor(Math.random() * (400 - 200 + 1)) + 200
+            }
         } else {
-            click = Math.floor(Math.random() * (50 - 10 + 1)) + 10
+            if (currentEnergy <= 200) {
+                taps = Math.floor(Math.random() * (5 - 1 + 1)) + 1
+            } else {
+                taps = Math.floor(Math.random() * (50 - 10 + 1)) + 10
+            }
         }
 
         try {
-            const response = await fetch(`${apiUrl}/game/collectCoin`, {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: headerWithToken(accessToken),
-                body: click,
+                body: JSON.stringify(querySendTaps(nonce, taps)),
                 agent: proxy
             });
 
@@ -176,27 +170,28 @@ async function collectCoin(accessToken, clickLevel, proxy) {
 
             const responseJson = await response.json();
 
-            if (responseJson.message === 'left coin not enough') {
-                collectCoin = false
-                console.log('All Coin Successfully Collected')
-            } else {
-                console.log('Success Collect Coin:', responseJson.data.collectAmount)
+            if ('telegramGameProcessTapsBatch' in responseJson.data) {
+                currentEnergy = responseJson.data.telegramGameProcessTapsBatch.currentEnergy
+                console.log('Success Tap-Tap, Current Energy:', currentEnergy)
                 await sleep(Math.floor(Math.random() * (500 - 300 + 1)) + 300)
+            } else {
+                console.log("Send Taps:", responseJson.data)
             }
         } catch (error) {
             console.error('Error:', error.message);
-            throw error;
         }
-    } while (collectCoin)
+    } while (currentEnergy >= limitTap)
+    console.log("Energy Already Limit")
 }
 
-async function claimSpecialBox(accessToken, proxy) {
+async function applyBoost(accessToken, typeBoost, proxy) {
     console.log("[CLAIM SPECIAL BOX]")
 
     try {
-        const response = await fetch(`${apiUrl}/game/recoverSpecialBox`, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: headerWithToken(accessToken),
+            body: JSON.stringify(queryApplyBooster(typeBoost)),
             agent: proxy
         });
 
@@ -206,48 +201,26 @@ async function claimSpecialBox(accessToken, proxy) {
 
         const responseJson = await response.json();
 
-        if (responseJson.message === 'Success') {
-            console.log("claimSpecialBox:", responseJson.message)
+        if (responseJson.data.telegramGameActivateBooster) {
+            console.log(`applyBoost${typeBoost} Success`)
         } else {
-            console.log("claimSpecialBox:", responseJson.message)
-        }
-    } catch (error) {
-        console.error('Error:', error.message);
-        throw error;
-    }
-}
-
-async function getSpecialBox(accessToken, clickLevel, proxy) {
-    try {
-        const response = await fetch(`${apiUrl}/game/getSpecialBoxInfo`, {
-            method: 'GET',
-            headers: headerWithToken(accessToken),
-            agent: proxy
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const responseJson = await response.json();
-
-        if (responseJson.data.recoveryBox !== null) {
-            await specialBoxReloadPage(accessToken, clickLevel, proxy)
-        } else {
-            console.log("getSpecialBox:", responseJson.data.recoveryBox)
+            console.log(`applyBoost${typeBoost}:`, responseJson.data)
         }
 
     } catch (error) {
         console.error('Error:', error.message);
-        throw error;
+
     }
 }
 
-async function specialBoxReloadPage(accessToken, clickLevel, proxy) {
+async function setNewBoss(accessToken, proxy) {
+    console.log("[SET NEXT BOSS]")
+
     try {
-        const response = await fetch(`${apiUrl}/game/specialBoxReloadPage`, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: headerWithToken(accessToken),
+            body: JSON.stringify(queryNextBoss),
             agent: proxy
         });
 
@@ -257,76 +230,13 @@ async function specialBoxReloadPage(accessToken, clickLevel, proxy) {
 
         const responseJson = await response.json();
 
-        if (responseJson.message === 'Success') {
-            await collectSpecialBoxCoin(accessToken, clickLevel, proxy)
-        } else {
-            console.log("specialBoxReloadPage:", responseJson.message)
-        }
-
-
+        console.log("setNewBoss:", responseJson.data)
     } catch (error) {
         console.error('Error:', error.message);
-        throw error;
+
     }
 }
 
-async function collectSpecialBoxCoin(accessToken, clickLevel, proxy) {
-    let click
-    if (clickLevel <= 5) {
-        click = Math.floor(Math.random() * (300 - 100 + 1)) + 100
-    } else {
-        click = Math.floor(Math.random() * (50 - 10 + 1)) + 10
-    }
-    try {
-        const response = await fetch(`${apiUrl}/game/collectSpecialBoxCoin`, {
-            method: 'POST',
-            headers: headerWithToken(accessToken),
-            body: JSON.stringify({ "boxType": 2, "coinCount": click }),
-            agent: proxy
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const responseJson = await response.json();
-
-        if (responseJson.message === 'Success') {
-            console.log('Success Collect Prize Box:', responseJson.data.collectAmount)
-        }
-    } catch (error) {
-        console.error('Error:', error.message);
-        throw error;
-    }
-}
-
-async function claimRefillCoin(accessToken, clickLevel, proxy) {
-    console.log("[CLAIM REFILL COIN]")
-
-    try {
-        const response = await fetch(`${apiUrl}/game/recoverCoinPool`, {
-            method: 'POST',
-            headers: headerWithToken(accessToken),
-            agent: proxy
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const responseJson = await response.json();
-
-        if (responseJson.message === 'Success') {
-            console.log("claimRefillCoin:", responseJson.message)
-            await collectCoin(accessToken, clickLevel, proxy)
-        } else {
-            console.log("claimRefillCoin:", responseJson.message)
-        }
-    } catch (error) {
-        console.error('Error:', error.message);
-        throw error;
-    }
-}
 
 (async () => {
     process.on('SIGINT', () => {
@@ -346,7 +256,7 @@ async function claimRefillCoin(accessToken, clickLevel, proxy) {
         await register(TelegramClient, sessions, apiId, apiHash, number, input)
     }
     // End Login Telegram
-    
+
     console.log("Clearing Screen ......");
     await sleep(3000)
 
@@ -357,9 +267,9 @@ async function claimRefillCoin(accessToken, clickLevel, proxy) {
         let index = 0;
         for (const number of phone) {
             console.log(`\n<=====================[${number}]=====================>`);
-            const proxyUrl = `socks5://username:pass@${proxyDomain[index]}:1080`;
+            const proxyUrl = `socks5://${process.env.PROXY_USERNAME}:${process.env.PROXY_PASSWORD}@${proxyDomain[index]}:1080`;
             const proxy = new SocksProxyAgent(proxyUrl)
-            
+
             const sessions = new StoreSession(`${sessionPath}${number}`);
             const client = new TelegramClient(sessions, apiId, apiHash, {
                 connectionRetries: 5,
@@ -376,41 +286,70 @@ async function claimRefillCoin(accessToken, clickLevel, proxy) {
 
             const auth = await client.invoke(
                 new Api.messages.RequestWebView({
-                    peer: "theYescoin_bot",
-                    bot: "theYescoin_bot",
+                    peer: "memefi_coin_bot",
+                    bot: "memefi_coin_bot",
                     fromBotMenu: false,
                     platform: 'android',
-                    url: "https://www.yescoin.gold/",
+                    url: "https://tg-app.memefi.club/game",
                 })
             );
 
             const authData = decodeURIComponent(decodeURIComponent(auth.url.split('tgWebAppData=')[1].split('&tgWebAppVersion')[0]));
 
-            const accessToken = await getAccessToken(authData, 3, proxy)
-
-            const [ip, country] = await checkIp(proxy);
-            console.log("[CHECK IP]")
-            console.log(`Ip\t:${ip}`)
-            console.log(`Country\t:${country}`)
-
-            await getAccountInfo(accessToken, proxy)
-
-            const [clickLevel, specialBoxBalance, refillCoinBalance] = await getAccountBuildInfo(accessToken, proxy)
-
-            await collectCoin(accessToken, clickLevel, proxy)
-
-            await getSpecialBox(accessToken, clickLevel, proxy)
-            
-
-            for (let i = 0; i < specialBoxBalance; i++) {
-                await claimSpecialBox(accessToken, proxy)
+            const splitAuth = {
+                authDate: parseInt(authData.split('auth_date=')[1].split('&hash')[0]),
+                hash: authData.split('hash=')[1],
+                queryId: authData.split('query_id=')[1].split('&user')[0],
+                id: parseInt(authData.split('"id":')[1].split(',"first_name"')[0]),
+                firstName: authData.split('"first_name":"')[1].split('","last_name"')[0],
+                lastName: authData.split('"last_name":"')[1].split('","username"')[0],
+                username: authData.split('"username":"')[1].split('","language_code"')[0],
             }
 
-            for (let i = 0; i < refillCoinBalance; i++) {
-                await claimRefillCoin(accessToken, clickLevel, proxy)
+            const authQuery = queryAccessToken(splitAuth.authDate, splitAuth.hash, splitAuth.queryId, splitAuth.id, splitAuth.firstName, splitAuth.lastName, splitAuth.username)
+
+            const accessToken = await getAccessToken(authQuery, 3, proxy)
+
+            if (accessToken !== null) {
+                const infoIp = await checkIp(proxy);
+
+                if (infoIp !== 'error') {
+                    const [ip, country] = infoIp;
+                    console.log("[CHECK IP]")
+                    console.log(`Ip\t:${ip}`)
+                    console.log(`Country\t:${country}`)
+                }
+
+                const accountInfo = await getAccountInfo(accessToken, proxy)
+
+                if (Array.isArray(accountInfo)) {
+                    const [nonce, weaponLevel, turboBalance, refillBalance, bossHealth] = accountInfo;
+
+                    await sendTaps(accessToken, nonce, weaponLevel, proxy)
+
+                    for (let i = 0; i < turboBalance; i++) {
+                        await applyBoost(accessToken, "Turbo", proxy)
+                        await sleep(3000)
+                        await sendTaps(accessToken, nonce, weaponLevel, proxy)
+                    }
+
+                    for (let i = 0; i < refillBalance; i++) {
+                        await applyBoost(accessToken, "Recharge", proxy)
+                        await sleep(3000)
+                        await sendTaps(accessToken, nonce, weaponLevel, proxy)
+                    }
+
+                    if (bossHealth <= 0) {
+                        await setNewBoss(accessToken, proxy)
+                        await sleep(3000)
+                    }
+                } else {
+                    console.log("accountInfo:", accountInfo)
+                }
+
+                index++
             }
 
-            index++
         }
 
         const rest = Math.floor(Math.random() * (600000 - 300000 + 1)) + 300000
