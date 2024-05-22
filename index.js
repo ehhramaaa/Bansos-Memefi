@@ -175,7 +175,7 @@ async function sendTaps(accessToken, nonce, weaponLevel, proxy) {
                 currentEnergy = responseJson.data.telegramGameProcessTapsBatch.currentEnergy
                 bossHealth = responseJson.data.telegramGameProcessTapsBatch.currentBoss.currentHealth
                 console.log('Success Tap-Tap, Current Energy:', currentEnergy)
-                
+
                 if (bossHealth <= 0) {
                     await setNewBoss(accessToken, proxy)
                     await sleep(3000)
@@ -332,18 +332,18 @@ async function setNewBoss(accessToken, proxy) {
                 if (Array.isArray(accountInfo)) {
                     const [nonce, weaponLevel, turboBalance, refillBalance] = accountInfo;
 
-                    await sendTaps(accessToken, nonce, weaponLevel, bossHealth, proxy)
+                    await sendTaps(accessToken, nonce, weaponLevel, proxy)
 
                     for (let i = 0; i < turboBalance; i++) {
                         await applyBoost(accessToken, "Turbo", proxy)
                         await sleep(3000)
-                        await sendTaps(accessToken, nonce, weaponLevel, bossHealth, proxy)
+                        await sendTaps(accessToken, nonce, weaponLevel, proxy)
                     }
 
                     for (let i = 0; i < refillBalance; i++) {
                         await applyBoost(accessToken, "Recharge", proxy)
                         await sleep(3000)
-                        await sendTaps(accessToken, nonce, weaponLevel, bossHealth, proxy)
+                        await sendTaps(accessToken, nonce, weaponLevel, proxy)
                     }
                 } else {
                     console.log("accountInfo:", accountInfo)
