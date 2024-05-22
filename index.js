@@ -134,7 +134,7 @@ async function getAccountInfo(accessToken, proxy) {
     }
 }
 
-async function sendTaps(accessToken, nonce, weaponLevel, proxy) {
+async function sendTaps(accessToken, nonce, weaponLevel, bossHealth, proxy) {
     console.log("[SEND TAPS]")
 
     let limitTap = Math.floor(Math.random() * (200 - 50 + 1)) + 50
@@ -146,7 +146,7 @@ async function sendTaps(accessToken, nonce, weaponLevel, proxy) {
             await setNewBoss(accessToken, proxy)
             await sleep(3000)
         }
-        
+
         if (weaponLevel <= 5) {
             if (currentEnergy <= 200) {
                 taps = Math.floor(Math.random() * (50 - 10 + 1)) + 10
@@ -330,18 +330,18 @@ async function setNewBoss(accessToken, proxy) {
                 if (Array.isArray(accountInfo)) {
                     const [nonce, weaponLevel, turboBalance, refillBalance, bossHealth] = accountInfo;
 
-                    await sendTaps(accessToken, nonce, weaponLevel, proxy)
+                    await sendTaps(accessToken, nonce, weaponLevel, bossHealth, proxy)
 
                     for (let i = 0; i < turboBalance; i++) {
                         await applyBoost(accessToken, "Turbo", proxy)
                         await sleep(3000)
-                        await sendTaps(accessToken, nonce, weaponLevel, proxy)
+                        await sendTaps(accessToken, nonce, weaponLevel, bossHealth, proxy)
                     }
 
                     for (let i = 0; i < refillBalance; i++) {
                         await applyBoost(accessToken, "Recharge", proxy)
                         await sleep(3000)
-                        await sendTaps(accessToken, nonce, weaponLevel, proxy)
+                        await sendTaps(accessToken, nonce, weaponLevel, bossHealth, proxy)
                     }
 
                     if (bossHealth <= 0) {
