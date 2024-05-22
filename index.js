@@ -114,8 +114,7 @@ async function getAccountInfo(accessToken, proxy) {
 
         console.log("<==BOSS INFO==>")
         console.log('level\t:', responseJson.data.telegramGameGetConfig.currentBoss.level)
-        console.log('currentHealth\t:', responseJson.data.telegramGameGetConfig.currentBoss.currentHealth)
-        console.log('maxHealth\t:', responseJson.data.telegramGameGetConfig.currentBoss.maxHealth)
+        console.log('currentHealth:', responseJson.data.telegramGameGetConfig.currentBoss.currentHealth)
 
         console.log("<==BOOST INFO==>")
         console.log('TurboAmount\t:', responseJson.data.telegramGameGetConfig.freeBoosts.currentTurboAmount)
