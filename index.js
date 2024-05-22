@@ -92,7 +92,7 @@ async function getAccessToken(authQuery, retryCount = 3, proxy) {
 }
 
 async function getAccountInfo(accessToken, proxy) {
-    console.log("<==ACCOUNT INFO==>")
+    console.log("[ACCOUNT INFO]")
 
     try {
         const response = await fetch(apiUrl, {
@@ -112,18 +112,18 @@ async function getAccountInfo(accessToken, proxy) {
         console.log('coinsAmount\t:', responseJson.data.telegramGameGetConfig.coinsAmount)
         console.log('maxEnergy\t:', responseJson.data.telegramGameGetConfig.maxEnergy)
 
-        console.log("<==BOSS INFO==>")
+        console.log("[BOSS INFO]")
         console.log('level\t:', responseJson.data.telegramGameGetConfig.currentBoss.level)
         console.log('currentHealth:', responseJson.data.telegramGameGetConfig.currentBoss.currentHealth)
 
-        console.log("<==BOOST INFO==>")
+        console.log("[BOOST INFO]")
         console.log('TurboAmount\t:', responseJson.data.telegramGameGetConfig.freeBoosts.currentTurboAmount)
         console.log('RefillAmount:', responseJson.data.telegramGameGetConfig.freeBoosts.currentRefillEnergyAmount)
 
-        console.log("<==LEVEL INFO==>")
+        console.log("[LEVEL INFO]")
         console.log('weaponLevel\t:', responseJson.data.telegramGameGetConfig.weaponLevel)
-        console.log('energyLimitLevel:', responseJson.data.telegramGameGetConfig.energyLimitLevel)
         console.log('tapBotLevel\t:', responseJson.data.telegramGameGetConfig.tapBotLevel)
+        console.log('energyLimitLevel:', responseJson.data.telegramGameGetConfig.energyLimitLevel)
 
         return [responseJson.data.telegramGameGetConfig.nonce, responseJson.data.telegramGameGetConfig.weaponLevel, responseJson.data.telegramGameGetConfig.freeBoosts.currentTurboAmount, responseJson.data.telegramGameGetConfig.freeBoosts.currentRefillEnergyAmount]
 
@@ -133,7 +133,7 @@ async function getAccountInfo(accessToken, proxy) {
 }
 
 async function sendTaps(accessToken, nonce, weaponLevel, proxy) {
-    console.log("<==SEND TAPS==>")
+    console.log("[SEND TAPS]")
 
     let limitTap = Math.floor(Math.random() * (200 - 50 + 1)) + 50
     let currentEnergy = 0
@@ -190,7 +190,7 @@ async function sendTaps(accessToken, nonce, weaponLevel, proxy) {
 }
 
 async function applyBoost(accessToken, typeBoost, proxy) {
-    console.log("<==CLAIM SPECIAL BOX==>")
+    console.log("[CLAIM SPECIAL BOX]")
 
     try {
         const response = await fetch(apiUrl, {
@@ -219,7 +219,7 @@ async function applyBoost(accessToken, typeBoost, proxy) {
 }
 
 async function setNewBoss(accessToken, proxy) {
-    console.log("<==SET NEXT BOSS==>")
+    console.log("[SET NEXT BOSS]")
 
     try {
         const response = await fetch(apiUrl, {
@@ -320,7 +320,7 @@ async function setNewBoss(accessToken, proxy) {
 
                 if (infoIp !== 'error') {
                     const [ip, country] = infoIp;
-                    console.log("<==CHECK IP==>")
+                    console.log("[CHECK IP]")
                     console.log(`Ip\t:${ip}`)
                     console.log(`Country\t:${country}`)
                 }
