@@ -142,6 +142,11 @@ async function sendTaps(accessToken, nonce, weaponLevel, proxy) {
     let taps
 
     do {
+        if (bossHealth <= 0) {
+            await setNewBoss(accessToken, proxy)
+            await sleep(3000)
+        }
+        
         if (weaponLevel <= 5) {
             if (currentEnergy <= 200) {
                 taps = Math.floor(Math.random() * (50 - 10 + 1)) + 10
